@@ -12,28 +12,23 @@ shinyUI(fluidPage(
       withMathJax(),
 
       # Render checkboxes in a 4 x 4 grid
-      checkboxGroupInput(inputId  = "features_selected_1",
-                         label    = "Include features:",
-                         choices  = feature_ids[1:4],
-                         inline   = TRUE),
-      checkboxGroupInput(inputId  = "features_selected_2",
-                         choices  = feature_ids[5:8],
-                         label    = "",
-                         inline   = TRUE),
-      checkboxGroupInput(inputId  = "features_selected_3",
-                         choices  = feature_ids[9:12],
-                         label    = "",
-                         inline   = TRUE),
-      checkboxGroupInput(inputId  = "features_selected_4",
-                         choices  = feature_ids[13:16],
-                         label    = "",
-                         inline   = TRUE),
-      hr()
+      h3("Model choice"),
+      tags$div(h4("Features to include:"),
+               checkboxGroupInput("features_selected", "", feature_ids,
+                         selected = c(feature_ids), inline = TRUE)),
+      tags$div(h4("Method choice:"),
+               selectInput("method", "How do we pick the coefficients?",
+                           method_choices, method_manual)),
+      tags$div(uiOutput("model_input"))
     ),
 
     mainPanel(
       # Plot the test points
-      plotOutput("plot")
+      plotOutput("plot"),
+      tags$p("Current guess for classifier: ",
+             htmlOutput("formula", inline = TRUE)),
+      tags$p("In-sample accurcy: ",
+             textOutput("accuracy", inline = TRUE))
     )
   )
 ))
