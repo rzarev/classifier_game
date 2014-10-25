@@ -49,12 +49,12 @@ generate_points <- function() {
   all_points_transformed <<- transform_data(all_points_raw)
   all_points_raw$outcome <<- class_labels(all_points_transformed,
                                           coefficients_real)
-  grid$z_real            <<- class_labels(grid_transformed, coefficients_real)
+  grid$outcome_real            <<- class_labels(grid_transformed, coefficients_real)
 }
 
 # Plot function: plot a subset of the points, and a cutoff boundary.
 # Also color the points.
-plot_points_and_guess <- function(subset = train_index) {
+plot_func <- function(subset) {
   ggplot(aes(x = x, y = y, col = outcome), data = grid) +
   geom_point(alpha = .05, size = 2) +
   geom_point(aes(shape = correct), data = all_points_raw[subset, ], size = 3) +
@@ -67,8 +67,8 @@ default_coefficients <- c(-.2,-1,0,0, 1,1,0,0, 0,0,0,0, 0,0,0,0)
 # Render the current guess formula in LaTeX
 make_formula <- function(coefficients) {
   # Intercept is a special case. Render it on the right.
-  rhs <- format(-coefficients[1], digits = 2)
-  lhs_coefs <- format(coefficients[2:16], digits = 2)
+  rhs <- format.default(-coefficients[1], digits = 2)
+  lhs_coefs <- format.default(coefficients[2:16], digits = 2)
   lhs_terms <- feature_labels_raw[2:16]
 
   # If the coefficient is exactly 0 or -1, do not write explicitly.
@@ -113,7 +113,7 @@ shinyServer(function(input, output, session) {
                            selected = c("1", "2", "5", "6"))
 
   # Fit L1/L2 regressions for all possible lambdas
-  regressions <- reactive(
+  regressions <- reactive({
     if (input$method == method_logistic_l2 ||
           input$method == method_logistic_l1) {
       lambdas <- seq(0, 1, length.out = 21)
@@ -135,7 +135,8 @@ shinyServer(function(input, output, session) {
                     all_points_raw$outcome[train_index], "binomial", alpha = alpha,
                     lambda = lambdas, intercept = features_present()[1])
       fit
-    })
+    }
+  })
 
   # Get the coefficient values
   coefficient_values <- reactive({
@@ -185,31 +186,44 @@ shinyServer(function(input, output, session) {
     res
   })
 
-  # If the coefficients change update everything
-  plt <- reactive({
-    effective_coefficients()
-    plot_points_and_guess()
-  })
-
-  accuracy_train <- reactive({
-    effective_coefficients()
-    mean(all_points_raw$correct[train_index] == "YES")
-  })
-  accuracy_test <- reactive({
-    effective_coefficients()
-    mean(all_points_raw$correct[test_index] == "YES")
-  })
-
   # Output variables
-  output$plot <- renderPlot(plt())
-  output$accuracy <- renderText(percent(accuracy_train()))
-  output$formula <- renderUI(withMathJax(make_formula(effective_coefficients())))
+  output$plot_train <- renderPlot({
+    effective_coefficients()
+    plot_func(train_index)
+  })
+  output$plot_test  <- renderPlot({
+    effective_coefficients()
+    plot_func(test_index)
+  })
+  output$accuracy_train <- renderText({
+    effective_coefficients()
+    percent(mean(all_points_raw$correct[train_index] == "YES"))
+    })
+  output$accuracy_test <- renderText({
+    effective_coefficients()
+    percent(mean(all_points_raw$correct[train_index] == "YES"))
+  })
+  output$accuracy_total <- renderText({
+    effective_coefficients()
+    percent(mean(grid$outcome == grid$outcome_real))
+  })
+  output$formula_guess <- renderUI({
+    withMathJax(make_formula(effective_coefficients()))
+  })
+  output$formula_real  <- renderUI({
+    withMathJax(make_formula(coefficients_real))
+  })
+
+  # We can't call the same object twice?!?
+  # So we just make an extra copy
+  output$formula_guess2 <- renderUI({
+    withMathJax(make_formula(effective_coefficients()))
+  })
 
   # A small conditional numeric input
   # The main idea is from Stack-Overflow user Alex Brown
   # number = coefficient index
-  conditionalInput <- function (number)
-  {
+  conditionalInput <- function(number) {
     id <- paste0("coefficient_", number)
     enabled <- features_present()[number]
     if (enabled) {
@@ -220,8 +234,8 @@ shinyServer(function(input, output, session) {
                      class = "input-mini"))
     }
   }
-  output$model_input <-
-    renderUI(withMathJax(
+  output$model_input <- renderUI({
+    withMathJax(
       if (input$method == method_manual) {
         tags$div(h4("Coefficients:"),
                  conditionalInput(1), conditionalInput(2),
@@ -240,7 +254,8 @@ shinyServer(function(input, output, session) {
                  },
                  sliderInput("lambda", "\\(\\lambda\\)",
                              0.05, 1, 1, step = .05))
-      }))
+      })
+  })
 
 })
 
