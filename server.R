@@ -202,7 +202,7 @@ shinyServer(function(input, output, session) {
     })
   output$accuracy_test <- renderText({
     effective_coefficients()
-    percent(mean(all_points_raw$correct[train_index] == "YES"))
+    percent(mean(all_points_raw$correct[test_index] == "YES"))
   })
   output$accuracy_total <- renderText({
     effective_coefficients()

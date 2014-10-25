@@ -18,7 +18,7 @@ buildPanel <-
              ),
              mainPanel(
                # Plot the test points
-               h4("Test sample", align = "center"),
+               h4("Training sample", align = "center"),
                plotOutput("plot_train"),
                tags$p("Current guess for the classifier: ",
                       htmlOutput("formula_guess", inline = TRUE)),
