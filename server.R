@@ -9,8 +9,9 @@ library(glmnet)
 coefficients_real <- numeric(16)
 reset_coefficients <- function() {
   nonzero_coefficients <- sample(1:16, 5, replace = FALSE)
-  coefficients_real <<- rnorm(16, mean = 0, sd = .5)
-  coefficients_real[!nonzero_coefficients] <<- 0
+  tmp <- numeric(16)
+  tmp[nonzero_coefficients] <- rnorm(5, mean = 0, sd = .5)
+  coefficients_real <<- tmp
 }
 
 # Evaluate a cutoff function based on a vector of coefficients
