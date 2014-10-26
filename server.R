@@ -88,6 +88,10 @@ make_formula <- function(coefficients) {
 seen_answer        <- FALSE
 last_reset_pressed <- -1
 
+# Cache the effective coefficients.
+# Do not recalculate if they haven't changed
+last_effective_coefficients <- numeric(16)
+
 # ====================================================================
 # Server
 shinyServer(function(input, output, session) {
@@ -239,11 +243,14 @@ shinyServer(function(input, output, session) {
   effective_coefficients <- reactive({
     started()
     res <- coefficient_values() * features_present()
-    all_points_raw$guess   <<- class_labels(all_points_transformed, res)
-    all_points_raw$correct <<- ifelse(all_points_raw$outcome ==
-                                        all_points_raw$guess,
-                                      "YES", "NO")
-    grid$outcome           <<- class_labels(grid_transformed, res)
+    if (any(res != last_effective_coefficients)) ({
+      all_points_raw$guess   <<- class_labels(all_points_transformed, res)
+      all_points_raw$correct <<- ifelse(all_points_raw$outcome ==
+                                          all_points_raw$guess,
+                                        "YES", "NO")
+      grid$outcome           <<- class_labels(grid_transformed, res)
+      last_effective_coefficients <<- res
+    })
     res
   })
 
