@@ -119,4 +119,5 @@ helpPanel <-
              tags$a(href = "http://github.com/rzarev/classifier_game/", "GitHub"),"."))
 
 navbarPage("Classify!",
-          tabsetPanel(buildPanel, evaluatePanel, helpPanel, id = "tabs"))
+          tabsetPanel(buildPanel, evaluatePanel, helpPanel, id = "tabs"),
+          inverse = TRUE)

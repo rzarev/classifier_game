@@ -260,8 +260,10 @@ shinyServer(function(input, output, session) {
     }
   })
   output$plot_test  <- renderPlot({
-    if (data_ready()) {
+    if (data_ready() && input$tabs == "evaluate") {
       plot_func(test_index)
+    } else {
+      "Calculating..."
     }
   })
   output$accuracy_train <- renderText({
@@ -272,31 +274,41 @@ shinyServer(function(input, output, session) {
     }
     })
   output$accuracy_test <- renderText({
-    if (data_ready()) {
+    if (data_ready() && input$tabs == "evaluate") {
       percent(mean(all_points_raw$correct[test_index] == "YES"))
+    } else {
+      "Calculating..."
     }
   })
   output$accuracy_total <- renderText({
-    if (data_ready()) {
+    if (data_ready() && input$tabs == "evaluate") {
       percent(mean(grid$outcome == grid$outcome_real))
+    } else {
+      "Calculating..."
     }
   })
   output$formula_guess <- renderUI({
     if (data_ready()) {
       withMathJax(make_formula(effective_coefficients()))
+    } else {
+      "Calculating..."
     }
   })
   output$formula_real  <- renderUI({
-    if (data_ready()) {
+    if (data_ready() && input$tabs == "evaluate") {
       withMathJax(make_formula(coefficients_real))
+    } else {
+      "Calculing..."
     }
   })
 
   # We can't call the same object twice?!?
   # So we just make an extra copy
   output$formula_guess2 <- renderUI({
-    if (data_ready()) {
+    if (data_ready() && input$tabs == "evaluate") {
       withMathJax(make_formula(effective_coefficients()))
+    } else {
+      "Calculating..."
     }
   })
 
