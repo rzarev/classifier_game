@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Classify!</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Classify!">
+  <meta name="author" content="Rumen Zarev">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Classify!</h1>
+    <h2>A model fitting game</h2>
+    <p>Rumen Zarev<br/></p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Complex models and small sample sizes</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>One of the main problems in data analysis and machine learning is the balance
+between the need for a model to be flexible enough to fit a given data pattern,
+but not too flexible that it overfits. This is especially important for small
+sample sizes.</p>
+
+<p>A more complex model or a smaller data set increase the discrepancy between
+in-sample and out-of-sample model performance.</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-2" style="background:;">
+  <hgroup>
+    <h2>Demonstration</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Here is what happens in a simple regression context, when we inlude many
+extraneous features.</p>
+
+<pre><code class="r">set.seed(135)
+x &lt;- runif(50, -1, 1)
+y &lt;- 0.2 * x + runif(50, -1, 1)
+df &lt;- data.frame(x = x, &quot;x^2&quot; = x^2, &quot;x^3&quot; = x^3, &quot;sin(x)&quot; = sin(x), y = y)
+
+model &lt;- lm(y ~ ., data = df)
+coef(model)
+</code></pre>
+
+<pre><code>## (Intercept)           x         x.2         x.3      sin.x. 
+##   0.1184225 -84.8951845  -0.0231573  12.8838298  85.4065880
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-3" style="background:;">
+  <hgroup>
+    <h2>The game</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>The &quot;Classify!&quot; illustrates this problem by presenting the player with a sample
+from simulated data. The data is two-dimensional, of two classes.</p>
+
+<p>The possible models allowed involve a linear cutoff function, over 16 derived
+features---monomials in \(x\) and \(y\) up to \(x^3y^3\).</p>
+
+<p>The player can either pick coefficients directly or use penalized logistic
+regression. To control the complexity of the model the player can choose
+to include only a subset of the features, as well as control the penalty
+parameter \(\lambda\).</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Complex models and small sample sizes'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='Demonstration'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='The game'>
+         3
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- MathJax: Fall back to local if CDN offline but local image fonts are not supported (saves >100MB) -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        inlineMath: [['$','$'], ['\\(','\\)']],
+        processEscapes: true
+      }
+    });
+  </script>
+  <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/2.0-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <!-- <script src="https://c328740.ssl.cf1.rackcdn.com/mathjax/2.0-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script> -->
+  <script>window.MathJax || document.write('<script type="text/x-mathjax-config">MathJax.Hub.Config({"HTML-CSS":{imageFont:null}});<\/script><script src="libraries/widgets/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"><\/script>')
+</script>
+<!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
