@@ -10,7 +10,7 @@ coefficients_real <- numeric(16)
 reset_coefficients <- function() {
   nonzero_coefficients <- sample(1:16, 5, replace = FALSE)
   tmp <- numeric(16)
-  tmp[nonzero_coefficients] <- rnorm(5, mean = 0, sd = .5)
+  tmp[nonzero_coefficients] <- runif(5, -1, 1)
   coefficients_real <<- tmp
 }
 
@@ -44,14 +44,6 @@ grid_transformed <- transform_data(grid)
 # Generate points and labels.
 all_points_raw         <- NULL
 all_points_transformed <- NULL
-generate_points <- function() {
-  all_points_raw <<- data.frame(x = runif(train_size + test_size, -1, 1),
-                                y = runif(train_size + test_size, -1, 1))
-  all_points_transformed <<- transform_data(all_points_raw)
-  all_points_raw$outcome <<- class_labels(all_points_transformed,
-                                          coefficients_real)
-  grid$outcome_real            <<- class_labels(grid_transformed, coefficients_real)
-}
 
 # Plot function: plot a subset of the points, and a cutoff boundary.
 # Also color the points.
@@ -61,9 +53,6 @@ plot_func <- function(subset) {
   geom_point(aes(shape = correct), data = all_points_raw[subset, ], size = 3) +
   xlab("") + ylab("")
 }
-
-# Store the coefficients
-default_coefficients <- c(-.2,-1,0,0, 1,1,0,0, 0,0,0,0, 0,0,0,0)
 
 # Render the current guess formula in LaTeX
 make_formula <- function(coefficients) {
@@ -95,29 +84,71 @@ make_formula <- function(coefficients) {
   paste0("\\(", lhs, ">", rhs, "\\)")
 }
 
+# Flag to reset if we have shown the answer
+seen_answer        <- FALSE
+last_reset_pressed <- -1
+
 # ====================================================================
 # Server
 shinyServer(function(input, output, session) {
-  # Make sure we get at least 10% of each class:
-  repeat {
-    reset_coefficients()
-    generate_points()
-    if (mean(all_points_raw$outcome == "GOOD") >= .1 &&
-        mean(all_points_raw$outcome == "BAD")  >= .1) {
-      break
+  # Initializations. Make sure we have generated the data before doing
+  # anything else.
+  started <- reactive({
+    if (need_to_reset()) {
+      # Rerun whenever "New Game" button is pressed
+      input$restart
+
+      # Make sure we get at least 20% of each class:
+      repeat {
+        reset_coefficients()
+        all_points_raw <<- data.frame(x = runif(train_size + test_size, -1, 1),
+                                      y = runif(train_size + test_size, -1, 1))
+        all_points_transformed <<- transform_data(all_points_raw)
+        all_points_raw$outcome <<- class_labels(all_points_transformed,
+                                                coefficients_real)
+        grid$outcome_real <<- class_labels(grid_transformed, coefficients_real)
+        if (mean(all_points_raw$outcome == "GOOD") >= .2 &&
+              mean(all_points_raw$outcome == "BAD")  >= .2) {
+          break
+        }
+      }
     }
-  }
 
-  # Select default features. We need to initialize all of them, so
-  # they get values initially, but we can change them after.
-  updateCheckboxGroupInput(session, "features_selected",
-                           selected = c("1", "2", "5", "6"))
+    TRUE
+  })
 
-  # Fit L1/L2 regressions for all possible lambdas
+  # Detect if 1. Just started, 2. Pressed New Game, or 3. Saw the answer.
+  # If so, need to start over.
+  need_to_reset <- reactive({
+    if (input$tabs == "evaluate") {
+      seen_answer <<- TRUE
+      return(FALSE)
+    }
+    if (input$tabs == "build" && seen_answer) {
+      seen_answer <<- FALSE
+      last_reset_pressed <<- input$reset
+      return(TRUE)
+    }
+    if (input$reset > last_reset_pressed) {
+      # Special case, only run first time.
+      if (input$reset == 0) {
+        # Select default features. We need to initialize all of them, so
+        # they get values initially, but we can change them after.
+        updateCheckboxGroupInput(session, "features_selected",
+                                 selected = c("1", "2", "5", "6"))
+      }
+      seen_answer <<- FALSE
+      last_reset_pressed <<- input$reset
+      return(TRUE)
+    }
+    FALSE
+  })
+
+  # Fit L1/L2 regressions for an auto-generated range of lambdas.
   regressions <- reactive({
+    started()
     if (input$method == method_logistic_l2 ||
           input$method == method_logistic_l1) {
-      lambdas <- seq(0, 1, length.out = 21)
       if (input$method == method_logistic_l1) {
         alpha <- 1
       } else {
@@ -133,24 +164,45 @@ shinyServer(function(input, output, session) {
         return(NULL)
       }
       fit <- glmnet(all_points_transformed[train_index, index, drop = FALSE],
-                    all_points_raw$outcome[train_index], "binomial", alpha = alpha,
-                    lambda = lambdas, intercept = features_present()[1])
+                    all_points_raw$outcome[train_index] == "GOOD",
+                    "binomial", alpha = alpha,
+                    intercept = features_present()[1])
       fit
+    }
+  })
+
+  # Remembar coefficient values, for when we disable/re-enable a feature
+  last_coefficients_entered <- reactive({
+    res <- c(input$coefficient_1, input$coefficient_2, input$coefficient_3,
+             input$coefficient_4, input$coefficient_5, input$coefficient_6,
+             input$coefficient_7, input$coefficient_8, input$coefficient_9,
+             input$coefficient_10, input$coefficient_11, input$coefficient_12,
+             input$coefficient_13, input$coefficient_14, input$coefficient_15,
+             input$coefficient_16)
+    if (length(res) < 16) {
+      # First run. Not initialized yet. Return defaults
+      res <- c(.5, 1, 0, 0, -1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+    res
+  })
+
+  last_lambda_selected <- reactive({
+    started()
+    if (input != method_manual) {
+      input$lambda
+    } else {
+      NULL
     }
   })
 
   # Get the coefficient values
   coefficient_values <- reactive({
+    started()
     index <- features_present()
 
     if (input$method == method_manual) {
       # Manual choice. Get them from the numericInputs
-      coefs <- c(input$coefficient_1, input$coefficient_2, input$coefficient_3,
-                 input$coefficient_4, input$coefficient_5, input$coefficient_6,
-                 input$coefficient_7, input$coefficient_8, input$coefficient_9,
-                 input$coefficient_10, input$coefficient_11, input$coefficient_12,
-                 input$coefficient_13, input$coefficient_14, input$coefficient_15,
-                 input$coefficient_16)
+      coefs <- last_coefficients_entered()
     } else if (input$method == method_logistic_l2 ||
                  input$method == method_logistic_l1) {
       lambda <-input$lambda
@@ -161,7 +213,13 @@ shinyServer(function(input, output, session) {
         return(numeric(16))
       }
       coefs <- numeric(16)
-      coefs[index] <- coef(fit)[, which(fit$lambda == lambda)]
+      # Which lambda value from the fit is closest to the chosen one?
+      all_lambdas <- fit$lambda
+      i <- which.min(abs(lambda - all_lambdas))
+      sub_coefs <- as.vector(coef(fit)[, i])
+      if (length(sub_coefs) == sum(index)) {
+        coefs[index] <- sub_coefs
+      }
     }
 
     coefs
@@ -169,6 +227,7 @@ shinyServer(function(input, output, session) {
 
   # Which features are selected
   features_present <- reactive({
+    started()
     res <- rep(FALSE, 16)
     ids <- input$features_selected
     res[as.integer(ids)] <- TRUE
@@ -178,6 +237,7 @@ shinyServer(function(input, output, session) {
   # Just the coefficients for the chosen features. Since they are changing
   # update all outputs
   effective_coefficients <- reactive({
+    started()
     res <- coefficient_values() * features_present()
     all_points_raw$guess   <<- class_labels(all_points_transformed, res)
     all_points_raw$correct <<- ifelse(all_points_raw$outcome ==
@@ -187,38 +247,57 @@ shinyServer(function(input, output, session) {
     res
   })
 
+  # Only display results if there everything is done, and there
+  # are no errors.
+  data_ready <- reactive({
+    any(effective_coefficients() != 0)
+  })
+
   # Output variables
   output$plot_train <- renderPlot({
-    effective_coefficients()
-    plot_func(train_index)
+    if (data_ready()) {
+      plot_func(train_index)
+    }
   })
   output$plot_test  <- renderPlot({
-    effective_coefficients()
-    plot_func(test_index)
+    if (data_ready()) {
+      plot_func(test_index)
+    }
   })
   output$accuracy_train <- renderText({
-    effective_coefficients()
-    percent(mean(all_points_raw$correct[train_index] == "YES"))
+    if (data_ready()) {
+      percent(mean(all_points_raw$correct[train_index] == "YES"))
+    } else {
+      "Waiting for data..."
+    }
     })
   output$accuracy_test <- renderText({
-    effective_coefficients()
-    percent(mean(all_points_raw$correct[test_index] == "YES"))
+    if (data_ready()) {
+      percent(mean(all_points_raw$correct[test_index] == "YES"))
+    }
   })
   output$accuracy_total <- renderText({
-    effective_coefficients()
-    percent(mean(grid$outcome == grid$outcome_real))
+    if (data_ready()) {
+      percent(mean(grid$outcome == grid$outcome_real))
+    }
   })
   output$formula_guess <- renderUI({
-    withMathJax(make_formula(effective_coefficients()))
+    if (data_ready()) {
+      withMathJax(make_formula(effective_coefficients()))
+    }
   })
   output$formula_real  <- renderUI({
-    withMathJax(make_formula(coefficients_real))
+    if (data_ready()) {
+      withMathJax(make_formula(coefficients_real))
+    }
   })
 
   # We can't call the same object twice?!?
   # So we just make an extra copy
   output$formula_guess2 <- renderUI({
-    withMathJax(make_formula(effective_coefficients()))
+    if (data_ready()) {
+      withMathJax(make_formula(effective_coefficients()))
+    }
   })
 
   # A small conditional numeric input
@@ -231,7 +310,7 @@ shinyServer(function(input, output, session) {
       div(style="display:inline-block",
           withMathJax(tags$label(feature_labels[number], `for` = id)),
           tags$input(id = id, type = "number",
-                     value = default_coefficients[number],
+                     value = last_coefficients_entered()[number],
                      class = "input-mini"))
     }
   }
@@ -248,13 +327,26 @@ shinyServer(function(input, output, session) {
                  conditionalInput(13), conditionalInput(14),
                  conditionalInput(15), conditionalInput(16))
       } else {
+        fit <- regressions()
+        if (is.null(fit)) {
+          # There were not enough features, so glmnet gave an error
+          p("The model requires at least two non-intercept features.",
+            "Please enable more features.")
+        } else {
+          lmin <- min(fit$lambda)
+          lmax <- max(fit$lambda)
+          llast <- last_lambda_selected()
+          if (is.null(llast) || llast < lmin || llast > lmax) {
+            llast <- .25 * lmax + .75* lmin
+          }
         tags$div(if (input$method == method_logistic_l2) {
                    h4("\\(L_2\\) penalty term:")
                  } else {
                    h4("\\(L_1\\) penalty term:")
                  },
                  sliderInput("lambda", "\\(\\lambda\\)",
-                             0.05, 1, 1, step = .05))
+                             lmin, lmax, llast, ticks = FALSE))
+        }
       })
   })
 

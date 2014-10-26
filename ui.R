@@ -2,9 +2,11 @@ library(shiny)
 
 buildPanel <-
   tabPanel("Build a model",
+           value = "build",
            sidebarLayout(
              sidebarPanel(
                withMathJax(),
+               actionButton("reset", "New Game"),
 
                # Render checkboxes in a 4 x 4 grid
                h3("Model choice"),
@@ -30,6 +32,7 @@ buildPanel <-
 
 evaluatePanel <-
   tabPanel("Evaluete your model",
+           value = "evaluate",
            tags$div(
               h4("Validation sample", align = "center"),
               plotOutput("plot_test")
@@ -83,16 +86,22 @@ helpPanel <-
                 "In this case, all coefficients are shrunk by the same",
                 "proprotion.")
              ),
+           p("For the two regression models, the range for the",
+             "parameter \\(\\lambda\\) is chosen adaptively."),
            p("In all cases, on the right side you can see your current",
-             "guess, and how it performs on the sample."),
+             "guess, and how it performs on the sample. To help visualization",
+             "the regions classified by your function into the two class",
+             "have been shaed in the appropriate colors."),
            h4("Evaluation"),
            p("When you have settled on a model, you can click on the",
              "evaluation tab, where you will see how your model",
              "performs on a new, held out sample."),
-#            p("[To simulate a real-world scenario, you can only use the",
-#              "validation set once. When you go to the model-building",
-#              "tab again, a new simulation will start with a different",
-#              "classifier."),
+           p("To simulate a real-world scenario, you can only use the",
+             "validation set once. When you go to the model-building",
+             "tab again, a new simulation will start with a different",
+             "classifier."),
+           p("In addition, you can always start a new game by pressing",
+             "the \"New Game\" button on the main tab."),
            h4("Theory"),
            p("In theory, the more complex the model you try, the bigger",
              "the disconnect between the in-sample and out-of-sample",
@@ -104,7 +113,10 @@ helpPanel <-
            p("To read more about this, you can start at the",
              "Wikipedia page on ",
              tags$a(href = "http://en.wikipedia.org/wiki/Regularization_%28mathematics%29",
-                    "regularization"),"."))
+                    "regularization"),"."),
+           h4("Source"),
+           p("The source for this app is available at",
+             tags$a(href = "http://github.com/rzarev/classifier_game/", "GitHub"),"."))
 
-navbarPage("Classifier Game",
-          tabsetPanel(buildPanel, evaluatePanel, helpPanel))
+navbarPage("Classify!",
+          tabsetPanel(buildPanel, evaluatePanel, helpPanel, id = "tabs"))
